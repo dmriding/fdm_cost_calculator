@@ -1,6 +1,12 @@
 use eframe::egui;
 use eframe::epaint::TextureHandle;
 
+enum Currency {
+    USD, // US Dollar
+    EUR, // Euro
+    GBP, // British Pound
+}
+
 struct CostCalculator {
     filament_cost_per_kilo: f32, // Filament cost in EUR/kilogram
     electricity_rate: f32,       // Electricity rate in EUR/kWh
@@ -13,6 +19,7 @@ struct CostCalculator {
     suggested_price: f32,        // Suggested price (calculated)
     profit_estimates: Vec<f32>,  // Estimated prices for different profit margins
     logo: Option<TextureHandle>, // Texture handle for the logo
+    currency: Currency,          // Selected currency
 }
 
 impl Default for CostCalculator {
@@ -29,6 +36,7 @@ impl Default for CostCalculator {
             suggested_price: 0.0,
             profit_estimates: vec![0.0; 5],
             logo: None,
+            currency: Currency::EUR, // Default to Euro
         }
     }
 }
@@ -52,20 +60,68 @@ impl CostCalculator {
             self.total_cost * 2.00, // 100% profit
         ];
     }
+
+    fn switch_currency(&mut self) {
+        self.currency = match self.currency {
+            Currency::USD => Currency::EUR,
+            Currency::EUR => Currency::GBP,
+            Currency::GBP => Currency::USD,
+        };
+    }
+
+    fn currency_symbol(&self) -> &str {
+        match self.currency {
+            Currency::USD => "$",
+            Currency::EUR => "€",
+            Currency::GBP => "£",
+        }
+    }
 }
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions::default();
+
     eframe::run_native(
         "FDM Cost Calculator",
         options,
         Box::new(|cc| {
             let mut app = CostCalculator::default();
             app.logo = load_logo(cc);
+
+            // Commented out icon loading for now
+            // if cfg!(target_os = "windows") {
+            //     set_app_icon("assets/icon.ico");
+            // }
+
             Ok(Box::new(app))
         }),
     )
 }
+
+// Function to set the app icon using the Windows API
+// #[cfg(target_os = "windows")]
+// fn set_app_icon(icon_path: &str) {
+//     unsafe {
+//         let hwnd = HWND(0); // Placeholder for HWND
+//         let icon = LoadImageW(
+//             None,
+//             wide_string(icon_path).as_ptr(),
+//             IMAGE_ICON,
+//             0,
+//             0,
+//             LR_LOADFROMFILE,
+//         );
+//         if !icon.is_null() {
+//             SendMessageW(hwnd, WM_SETICON, 0, icon.0 as _);
+//         }
+//     }
+// }
+
+// Convert a Rust string to a Windows-compatible wide string
+// #[cfg(target_os = "windows")]
+// fn wide_string(s: &str) -> Vec<u16> {
+//     OsStr::new(s).encode_wide().chain(Some(0)).collect()
+// }
 
 impl eframe::App for CostCalculator {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -84,14 +140,24 @@ impl eframe::App for CostCalculator {
 
             ui.separator();
 
+            // Currency selector
+            ui.horizontal(|ui| {
+                ui.label("Currency:");
+                if ui.button(self.currency_symbol()).clicked() {
+                    self.switch_currency();
+                }
+            });
+
+            ui.separator();
+
             // Input fields
             ui.horizontal(|ui| {
-                ui.label("Filament cost per kilogram (EUR):");
+                ui.label("Filament cost per kilogram:");
                 ui.add(egui::DragValue::new(&mut self.filament_cost_per_kilo).speed(1.0));
             });
 
             ui.horizontal(|ui| {
-                ui.label("Electricity rate (EUR/kWh):");
+                ui.label("Electricity rate:");
                 ui.add(egui::DragValue::new(&mut self.electricity_rate).speed(0.01));
             });
 
@@ -116,7 +182,7 @@ impl eframe::App for CostCalculator {
             });
 
             ui.horizontal(|ui| {
-                ui.label("Shipping cost (EUR):");
+                ui.label("Shipping cost:");
                 ui.add(egui::DragValue::new(&mut self.shipping_cost).speed(0.1));
             });
 
@@ -128,23 +194,34 @@ impl eframe::App for CostCalculator {
             ui.separator();
 
             // Display results
-            ui.label(format!("Total cost: {:.2} EUR", self.total_cost));
-            ui.label(format!("Suggested price (with markup): {:.2} EUR", self.suggested_price));
+            ui.label(format!(
+                "Total cost: {:.2} {}",
+                self.total_cost,
+                self.currency_symbol()
+            ));
+            ui.label(format!(
+                "Suggested price (with markup): {:.2} {}",
+                self.suggested_price,
+                self.currency_symbol()
+            ));
 
             ui.separator();
 
             ui.label("Profit Estimates:");
-            ui.label(format!("10% Profit: {:.2} EUR", self.profit_estimates[0]));
-            ui.label(format!("20% Profit: {:.2} EUR", self.profit_estimates[1]));
-            ui.label(format!("30% Profit: {:.2} EUR", self.profit_estimates[2]));
-            ui.label(format!("50% Profit: {:.2} EUR", self.profit_estimates[3]));
-            ui.label(format!("100% Profit: {:.2} EUR", self.profit_estimates[4]));
+            for (i, estimate) in self.profit_estimates.iter().enumerate() {
+                ui.label(format!(
+                    "{}% Profit: {:.2} {}",
+                    (i + 1) * 10,
+                    estimate,
+                    self.currency_symbol()
+                ));
+            }
         });
     }
 }
 
 fn load_logo(cc: &eframe::CreationContext<'_>) -> Option<TextureHandle> {
-    let bytes = include_bytes!("../assets/logo.png"); // Path to your logo file
+    let bytes = include_bytes!("../assets/logo.png"); // Path to your in-app logo file
     let image = image::load_from_memory(bytes).ok()?.to_rgba8();
     let size = [image.width() as _, image.height() as _];
     let pixels = image.into_raw();
