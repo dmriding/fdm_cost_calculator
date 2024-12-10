@@ -1,0 +1,30 @@
+# Compiled output
+/target/
+!/**/target/*/build
+
+# Cargo package manager files
+**/*.rs.bk
+/.cargo/
+
+# Dependencies
+/Cargo.lock
+/.cargo/**
+
+# Build artifacts
+*.rlib
+*.lock
+
+# Editor-specific files
+*.swp
+*.swo
+/.idea/
+/.vscode/
+*.DS_Store
+*.log
+
+# Coverage and debugging artifacts
+*.profraw
+
+# Rust/Cargo debug logs
+debug.log
+cargo-error.log
