@@ -1,4 +1,5 @@
 use eframe::egui;
+use eframe::epaint::TextureHandle;
 
 struct CostCalculator {
     filament_cost_per_kilo: f32, // Filament cost in EUR/kilogram
@@ -11,21 +12,23 @@ struct CostCalculator {
     total_cost: f32,             // Total cost (calculated)
     suggested_price: f32,        // Suggested price (calculated)
     profit_estimates: Vec<f32>,  // Estimated prices for different profit margins
+    logo: Option<TextureHandle>, // Texture handle for the logo
 }
 
 impl Default for CostCalculator {
     fn default() -> Self {
         Self {
-            filament_cost_per_kilo: 25.0, // Default filament cost in EUR/kilo
-            electricity_rate: 0.12,      // Default electricity rate in EUR/kWh
-            printer_wattage: 250.0,      // Default printer wattage in watts
-            filament_weight: 0.0,        // Default filament weight in grams
-            print_time: 0.0,             // Default print time in hours
-            markup_percentage: 20.0,     // Default markup percentage
-            shipping_cost: 0.0,          // Default shipping cost
-            total_cost: 0.0,             // Default total cost
-            suggested_price: 0.0,        // Default suggested price
-            profit_estimates: vec![0.0; 5], // Initialize for 10%, 20%, 30%, 50%, 100% profit
+            filament_cost_per_kilo: 25.0,
+            electricity_rate: 0.12,
+            printer_wattage: 250.0,
+            filament_weight: 0.0,
+            print_time: 0.0,
+            markup_percentage: 20.0,
+            shipping_cost: 0.0,
+            total_cost: 0.0,
+            suggested_price: 0.0,
+            profit_estimates: vec![0.0; 5],
+            logo: None,
         }
     }
 }
@@ -56,14 +59,30 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "FDM Cost Calculator",
         options,
-        Box::new(|_cc| Ok(Box::new(CostCalculator::default()))), // Corrected to return Result
+        Box::new(|cc| {
+            let mut app = CostCalculator::default();
+            app.logo = load_logo(cc);
+            Ok(Box::new(app))
+        }),
     )
 }
 
 impl eframe::App for CostCalculator {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("FDM Cost Calculator");
+            ui.horizontal(|ui| {
+                // Main heading
+                ui.heading("FDM Cost Calculator");
+
+                // Place the logo in the top-right corner
+                if let Some(logo) = &self.logo {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.image((logo.id(), egui::vec2(64.0, 64.0))); // Smaller logo for a modern look
+                    });
+                }
+            });
+
+            ui.separator();
 
             // Input fields
             ui.horizontal(|ui| {
@@ -106,12 +125,14 @@ impl eframe::App for CostCalculator {
                 self.calculate();
             }
 
-            // Display results
             ui.separator();
+
+            // Display results
             ui.label(format!("Total cost: {:.2} EUR", self.total_cost));
             ui.label(format!("Suggested price (with markup): {:.2} EUR", self.suggested_price));
 
             ui.separator();
+
             ui.label("Profit Estimates:");
             ui.label(format!("10% Profit: {:.2} EUR", self.profit_estimates[0]));
             ui.label(format!("20% Profit: {:.2} EUR", self.profit_estimates[1]));
@@ -120,4 +141,16 @@ impl eframe::App for CostCalculator {
             ui.label(format!("100% Profit: {:.2} EUR", self.profit_estimates[4]));
         });
     }
+}
+
+fn load_logo(cc: &eframe::CreationContext<'_>) -> Option<TextureHandle> {
+    let bytes = include_bytes!("../assets/logo.png"); // Path to your logo file
+    let image = image::load_from_memory(bytes).ok()?.to_rgba8();
+    let size = [image.width() as _, image.height() as _];
+    let pixels = image.into_raw();
+    Some(cc.egui_ctx.load_texture(
+        "logo",
+        egui::ColorImage::from_rgba_unmultiplied(size, &pixels),
+        egui::TextureOptions::default(),
+    ))
 }
