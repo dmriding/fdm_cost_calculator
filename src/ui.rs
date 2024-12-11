@@ -140,6 +140,11 @@ impl eframe::App for CalculatorUI {
             });
 
             ui.horizontal(|ui| {
+                ui.label("Hourly Charge (€/hour):");
+                ui.add(egui::DragValue::new(&mut self.logic.hourly_charge).speed(0.1));
+            });            
+
+            ui.horizontal(|ui| {
                 ui.label("Shipping cost:");
                 ui.add(egui::DragValue::new(&mut self.logic.shipping_cost).speed(0.1));
             });
@@ -182,11 +187,31 @@ impl eframe::App for CalculatorUI {
                 .show(ctx, |ui| {
                     ui.label("How to Use the FDM Cost Calculator:");
                     ui.indent("help_instructions", |ui| {
-                        ui.label("• The default filament price is in Euros.");
-                        ui.label("• If using a different currency, adjust filament prices accordingly.");
-                        ui.label("• Input filament weight, electricity rate, printer wattage, and print time.");
-                        ui.label("• Add shipping cost and specify your desired markup percentage.");
-                        ui.label("• Click 'Calculate' to see the total cost and suggested pricing.");
+                        ui.label("• **Defaults are for reference only:**");
+                        ui.indent("defaults_info", |ui| {
+                            ui.label("   - The default filament price is in Euros.");
+                            ui.label("   - Hourly charge and electricity rates are common estimates.");
+                            ui.label("   - Default values may not reflect your actual costs.");
+                        });
+                        ui.label("• **For accurate costs and estimates:**");
+                        ui.indent("input_info", |ui| {
+                            ui.label("   - Input the actual cost of your filament.");
+                            ui.label("   - Adjust the electricity rate and printer wattage.");
+                            ui.label("   - Specify the filament weight and print time.");
+                            ui.label("   - Add your shipping cost and desired markup percentage.");
+                            ui.label("   - Customize the hourly charge if needed.");
+                        });
+                        ui.label("• **About Currency Selection:**");
+                        ui.indent("currency_info", |ui| {
+                            ui.label("   - The currency button lets you switch the displayed currency symbol.");
+                            ui.label("   - This is purely for visual preferences and does not perform automatic conversions.");
+                            ui.label("   - Adjust your filament price manually to match your preferred currency.");
+                        });
+                        ui.label("• Once all fields are adjusted, click 'Calculate' to:");
+                        ui.indent("calculate_info", |ui| {
+                            ui.label("   - See the total cost for your print.");
+                            ui.label("   - Get a suggested selling price based on your inputs.");
+                        });
                     });
                     if ui.button("Close").clicked() {
                         self.show_help = false;

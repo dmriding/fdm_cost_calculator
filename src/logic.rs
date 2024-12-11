@@ -19,6 +19,7 @@ pub struct CalculatorLogic {
     pub electricity_rate: f32, // Electricity rate in EUR/kWh
     pub printer_wattage: f32, // Printer wattage in watts
     pub print_time: f32, // Print time in hours
+    pub hourly_charge: f32, // User-defined charge per print hour
     pub shipping_cost: f32, // Shipping cost in EUR
     pub markup_percentage: f32, // Markup percentage for profit
     pub wear_and_tear_cost: f32, // Wear and tear cost
@@ -40,6 +41,7 @@ impl Default for CalculatorLogic {
             electricity_rate: 0.12,
             printer_wattage: 250.0,
             print_time: 0.0,
+            hourly_charge: 2.50, // Default hourly charge
             shipping_cost: 0.0,
             markup_percentage: 20.0,
             wear_and_tear_cost: 0.0,
@@ -69,16 +71,13 @@ impl CalculatorLogic {
 
     pub fn calculate_costs(&mut self) {
         let filament_cost = (self.filament_price / 1000.0) * self.filament_weight;
-        let electricity_cost =
-            (self.printer_wattage / 1000.0) * self.print_time * self.electricity_rate;
+        let electricity_cost = (self.printer_wattage / 1000.0) * self.print_time * self.electricity_rate;
 
-        // Adjust wear and tear for carbon-based materials
-        self.wear_and_tear_cost = self.print_time * 0.05; // Simplified wear and tear (EUR/hour)
-        if self.is_carbon_based {
-            self.wear_and_tear_cost += 0.02 * self.print_time; // Extra for carbon-based
-        }
+        // Adjust for wear-and-tear and manual hourly charge
+        self.wear_and_tear_cost = self.print_time * 0.05; // Simplified wear-and-tear cost
+        let hourly_cost = self.print_time * self.hourly_charge;
 
-        self.total_cost = filament_cost + electricity_cost + self.wear_and_tear_cost + self.shipping_cost;
+        self.total_cost = filament_cost + electricity_cost + self.wear_and_tear_cost + hourly_cost + self.shipping_cost;
         self.suggested_price = self.total_cost * (1.0 + self.markup_percentage / 100.0);
     }
 
