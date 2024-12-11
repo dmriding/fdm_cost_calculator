@@ -20,22 +20,39 @@ impl Default for CalculatorUI {
 
 impl eframe::App for CalculatorUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Main panel
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("FDM Cost Calculator");
 
-                // Currency toggle
-                if ui.button(self.logic.currency_symbol()).clicked() {
+                // Currency switcher button
+                if ui
+                    .button(format!(
+                        "Switch to {}",
+                        match self.logic.currency {
+                            Currency::USD => "€", // EUR symbol
+                            Currency::EUR => "£", // GBP symbol
+                            Currency::GBP => "$", // USD symbol
+                        }
+                    ))
+                    .clicked()
+                {
                     self.logic.switch_currency();
                 }
 
-                // Place the logo in the top-right corner
-                if let Some(logo) = &self.logo {
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Place the help button and logo together
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Logo
+                    if let Some(logo) = &self.logo {
                         ui.image((logo.id(), egui::vec2(64.0, 64.0)));
-                    });
-                }
+                    }
+
+                    // Larger help button with styled text
+                    let help_button = egui::Button::new(egui::RichText::new("?").size(18.0))
+                        .min_size(egui::vec2(32.0, 32.0));
+                    if ui.add(help_button).clicked() {
+                        self.show_help = true;
+                    }
+                });
             });
 
             ui.separator();
@@ -165,9 +182,8 @@ impl eframe::App for CalculatorUI {
                 .show(ctx, |ui| {
                     ui.label("How to Use the FDM Cost Calculator:");
                     ui.indent("help_instructions", |ui| {
-                        ui.label("• Select the filament brand and material.");
-                        ui.label("• (Optional) Check 'Carbon-Based' for carbon filaments.");
-                        ui.label("• Manually adjust the filament price if needed.");
+                        ui.label("• The default filament price is in Euros.");
+                        ui.label("• If using a different currency, adjust filament prices accordingly.");
                         ui.label("• Input filament weight, electricity rate, printer wattage, and print time.");
                         ui.label("• Add shipping cost and specify your desired markup percentage.");
                         ui.label("• Click 'Calculate' to see the total cost and suggested pricing.");
@@ -178,4 +194,17 @@ impl eframe::App for CalculatorUI {
                 });
         }
     }
+}
+
+pub fn load_logo(cc: &eframe::CreationContext<'_>) -> Option<TextureHandle> {
+    let bytes = include_bytes!("../assets/logo.png");
+    let image = image::load_from_memory(bytes).ok()?.to_rgba8();
+    let size = [image.width() as _, image.height() as _];
+    let pixels = image.into_raw();
+
+    Some(cc.egui_ctx.load_texture(
+        "logo",
+        egui::ColorImage::from_rgba_unmultiplied(size, &pixels),
+        egui::TextureOptions::default(),
+    ))
 }
