@@ -43,21 +43,18 @@ impl eframe::App for CalculatorUI {
                     self.logic.switch_currency();
                 }
 
-                // Help button and logo
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if let Some(logo) = &self.logo {
-                        ui.image((logo.id(), egui::vec2(64.0, 64.0)));
-                    }
+            // Help button and logo
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if let Some(logo) = &self.logo {
+                    ui.image((logo.id(), egui::vec2(64.0, 64.0)));
+                }
 
-                    let help_button = egui::Button::new(egui::RichText::new("?")
-                        .size(20.0) // Larger text
-                        .color(egui::Color32::WHITE) // White text
-                        .background_color(egui::Color32::from_rgb(30, 144, 255))) // Blue background
-                        .min_size(egui::vec2(40.0, 40.0)); // Larger button size
-                    if ui.add(help_button).clicked() {
-                        self.show_help = true;
-                    }
-                });
+                if ui.selectable_label(self.show_help, egui::RichText::new("?").size(20.0))
+                    .clicked()
+                {
+                    self.show_help = true;
+                }
+            });
             });
 
             ui.separator();
@@ -82,7 +79,7 @@ impl eframe::App for CalculatorUI {
             // Filament Details Section
             ui.add_space(10.0); // Add spacing before the grid
             Grid::new("filament_grid")
-                .num_columns(2) // Two columns
+                .num_columns(3) // Three columns
                 .spacing([20.0, 10.0]) // Horizontal and vertical spacing
                 .show(ui, |ui| {
                     let mut remove_index = None; // Track the index of the filament to remove
@@ -143,8 +140,8 @@ impl eframe::App for CalculatorUI {
                             });
                         });
 
-                        if (i + 1) % 2 == 0 {
-                            ui.end_row(); // Move to the next row after two columns
+                        if (i + 1) % 3 == 0 {
+                            ui.end_row(); // Move to the next row after three columns
                         }
                     }
 
@@ -234,31 +231,33 @@ impl eframe::App for CalculatorUI {
                 .show(ctx, |ui| {
                     ui.label("How to Use the FDM Cost Calculator:");
                     ui.indent("help_instructions", |ui| {
-                        ui.label("• **Defaults are for reference only:**");
-                        ui.indent("defaults_info", |ui| {
-                            ui.label("   - The default filament price is in Euros.");
-                            ui.label("   - Hourly charge and electricity rates are common estimates.");
-                            ui.label("   - Default values may not reflect your actual costs.");
+                        ui.label("• **Switching Print Modes:** Use the 'Print Type' toggle to switch between Single Color and Multi-Color/Material modes.");
+                        ui.label("• **Adding Filaments:** In Multi-Color mode, click '+ Add Filament' to include additional filaments (up to 16).");
+                        ui.label("• **Removing Filaments:** Click the 🗑️ icon next to a filament to remove it from the list.");
+                        ui.label("• **Specifying Filament Details:** For each filament:");
+                        ui.indent("filament_info", |ui| {
+                            ui.label("   - Select the brand and material.");
+                            ui.label("   - Specify weight in grams.");
+                            ui.label("   - Input cost per kilogram.");
+                            ui.label("   - Check 'Carbon-Based' if applicable.");
                         });
-                        ui.label("• **For accurate costs and estimates:**");
-                        ui.indent("input_info", |ui| {
-                            ui.label("   - Input the actual cost of your filament.");
-                            ui.label("   - Adjust the electricity rate and printer wattage.");
-                            ui.label("   - Specify the filament weight and print time.");
-                            ui.label("   - Add your shipping cost and desired markup percentage.");
-                            ui.label("   - Customize the hourly charge if needed.");
+                        ui.label("• **Inputting Additional Costs:** Provide:");
+                        ui.indent("additional_costs", |ui| {
+                            ui.label("   - Purge/Waste Filament weight.");
+                            ui.label("   - Electricity rate (EUR/kWh).");
+                            ui.label("   - Printer wattage (W).");
+                            ui.label("   - Print time in hours.");
+                            ui.label("   - Hourly charge for printing.");
+                            ui.label("   - Shipping cost.");
+                            ui.label("   - Markup percentage for profit.");
                         });
-                        ui.label("• **About Currency Selection:**");
-                        ui.indent("currency_info", |ui| {
-                            ui.label("   - The currency button lets you switch the displayed currency symbol.");
-                            ui.label("   - This is purely for visual preferences and does not perform automatic conversions.");
-                            ui.label("   - Adjust your filament price manually to match your preferred currency.");
+                        ui.label("• **Results:** After clicking 'Calculate', the app will display:");
+                        ui.indent("results_info", |ui| {
+                            ui.label("   - Total cost of the print.");
+                            ui.label("   - Suggested selling price with markup.");
+                            ui.label("   - Wear and tear cost.");
                         });
-                        ui.label("• Once all fields are adjusted, click 'Calculate' to:");
-                        ui.indent("calculate_info", |ui| {
-                            ui.label("   - See the total cost for your print.");
-                            ui.label("   - Get a suggested selling price based on your inputs.");
-                        });
+                        ui.label("• **Switching Currency:** Use the currency button to switch between €, £, and $ for display purposes only.");
                     });
                     if ui.button("Close").clicked() {
                         self.show_help = false;
