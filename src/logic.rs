@@ -63,7 +63,7 @@ impl CalculatorLogic {
 
                 // Adjust for carbon-based variants
                 if self.is_carbon_based {
-                    self.filament_price += 10.0; // Example fixed increase
+                    self.filament_price += 10.0; // Example fixed increase for CF/GF
                 }
             }
         }
@@ -71,13 +71,16 @@ impl CalculatorLogic {
 
     pub fn calculate_costs(&mut self) {
         let filament_cost = (self.filament_price / 1000.0) * self.filament_weight;
-        let electricity_cost = (self.printer_wattage / 1000.0) * self.print_time * self.electricity_rate;
+        let electricity_cost =
+            (self.printer_wattage / 1000.0) * self.print_time * self.electricity_rate;
 
-        // Adjust for wear-and-tear and manual hourly charge
-        self.wear_and_tear_cost = self.print_time * 0.05; // Simplified wear-and-tear cost
-        let hourly_cost = self.print_time * self.hourly_charge;
+        // Adjust wear and tear for carbon-based materials
+        self.wear_and_tear_cost = self.print_time * 0.05; // Simplified wear and tear (EUR/hour)
+        if self.is_carbon_based {
+            self.wear_and_tear_cost += 0.02 * self.print_time; // Extra wear and tear for CF/GF
+        }
 
-        self.total_cost = filament_cost + electricity_cost + self.wear_and_tear_cost + hourly_cost + self.shipping_cost;
+        self.total_cost = filament_cost + electricity_cost + self.wear_and_tear_cost + self.shipping_cost;
         self.suggested_price = self.total_cost * (1.0 + self.markup_percentage / 100.0);
     }
 
