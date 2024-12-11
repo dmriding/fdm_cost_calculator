@@ -1,12 +1,13 @@
 use eframe::egui;
 use eframe::epaint::TextureHandle;
+use egui::Grid;
 use crate::logic::{CalculatorLogic, Currency};
 
 pub struct CalculatorUI {
     pub logic: CalculatorLogic,
     pub logo: Option<TextureHandle>, // Texture handle for the logo
     pub show_help: bool,             // Whether to show the help dialog
-    pub is_multi_color: bool, // Track toggle state
+    pub is_multi_color: bool,        // Track toggle state
 }
 
 impl Default for CalculatorUI {
@@ -47,7 +48,13 @@ impl eframe::App for CalculatorUI {
                     if let Some(logo) = &self.logo {
                         ui.image((logo.id(), egui::vec2(64.0, 64.0)));
                     }
-                    if ui.add(egui::Button::new("?")).clicked() {
+
+                    let help_button = egui::Button::new(egui::RichText::new("?")
+                        .size(20.0) // Larger text
+                        .color(egui::Color32::WHITE) // White text
+                        .background_color(egui::Color32::from_rgb(30, 144, 255))) // Blue background
+                        .min_size(egui::vec2(40.0, 40.0)); // Larger button size
+                    if ui.add(help_button).clicked() {
                         self.show_help = true;
                     }
                 });
@@ -73,76 +80,88 @@ impl eframe::App for CalculatorUI {
             ui.separator();
 
             // Filament Details Section
-            ui.collapsing("Filament Details", |ui| {
-                let mut remove_index = None; // Track the index of the filament to remove
-                for (i, filament) in self.logic.filaments.iter_mut().enumerate() {
-                    ui.group(|ui| {
-                        ui.label(format!("Filament #{}", i + 1));
-            
-                        // Brand selection
-                        let brands: Vec<_> = self.logic.filament_prices.keys().cloned().collect();
-                        egui::ComboBox::new(format!("brand_selector_{}", i), "Select Brand")
-                            .selected_text(filament.brand.clone())
-                            .show_ui(ui, |ui| {
-                                for brand in &brands {
-                                    if ui.selectable_label(&filament.brand == brand, *brand).clicked() {
-                                        filament.brand = brand.to_string();
+            ui.add_space(10.0); // Add spacing before the grid
+            Grid::new("filament_grid")
+                .num_columns(2) // Two columns
+                .spacing([20.0, 10.0]) // Horizontal and vertical spacing
+                .show(ui, |ui| {
+                    let mut remove_index = None; // Track the index of the filament to remove
+                    for (i, filament) in self.logic.filaments.iter_mut().enumerate() {
+                        ui.vertical(|ui| {
+                            ui.group(|ui| {
+                                ui.label(format!("Filament #{}", i + 1));
+
+                                // Brand selection
+                                let brands: Vec<_> = self.logic.filament_prices.keys().cloned().collect();
+                                egui::ComboBox::new(format!("brand_selector_{}", i), "Select Brand")
+                                    .selected_text(filament.brand.clone())
+                                    .show_ui(ui, |ui| {
+                                        for brand in &brands {
+                                            if ui.selectable_label(&filament.brand == brand, *brand).clicked() {
+                                                filament.brand = brand.to_string();
+                                            }
+                                        }
+                                    });
+
+                                if let Some(materials) = self.logic.filament_prices.get(filament.brand.as_str()) {
+                                    let material_keys: Vec<_> = materials.keys().cloned().collect();
+                                    egui::ComboBox::new(format!("material_selector_{}", i), "Select Material")
+                                        .selected_text(filament.material.clone())
+                                        .show_ui(ui, |ui| {
+                                            for material in &material_keys {
+                                                if ui
+                                                    .selectable_label(&filament.material == material, *material)
+                                                    .clicked()
+                                                {
+                                                    filament.material = material.to_string();
+                                                    if let Some(price) = materials.get(material) {
+                                                        filament.price_per_kg = *price;
+                                                    }
+                                                }
+                                            }
+                                        });
+                                }
+
+                                ui.checkbox(&mut filament.is_carbon_based, "Carbon-Based");
+
+                                ui.horizontal(|ui| {
+                                    ui.label("Weight (grams):");
+                                    ui.add(egui::DragValue::new(&mut filament.weight).speed(1.0));
+                                });
+
+                                ui.horizontal(|ui| {
+                                    ui.label("Price (€/kg):");
+                                    ui.add(egui::DragValue::new(&mut filament.price_per_kg).speed(0.1));
+                                });
+
+                                // Trash can icon for removing filaments
+                                if self.is_multi_color && i > 0 {
+                                    if ui.button(egui::RichText::new("🗑️").size(18.0)).clicked() {
+                                        remove_index = Some(i);
                                     }
                                 }
                             });
-            
-                        if let Some(materials) = self.logic.filament_prices.get(filament.brand.as_str()) {
-                            let material_keys: Vec<_> = materials.keys().cloned().collect();
-                            egui::ComboBox::new(format!("material_selector_{}", i), "Select Material")
-                                .selected_text(filament.material.clone())
-                                .show_ui(ui, |ui| {
-                                    for material in &material_keys {
-                                        if ui
-                                            .selectable_label(&filament.material == material, *material)
-                                            .clicked()
-                                        {
-                                            filament.material = material.to_string();
-                                            if let Some(price) = materials.get(material) {
-                                                filament.price_per_kg = *price;
-                                            }
-                                        }
-                                    }
-                                });
-                        }
-            
-                        ui.checkbox(&mut filament.is_carbon_based, "Carbon-Based");
-            
-                        ui.horizontal(|ui| {
-                            ui.label("Weight (grams):");
-                            ui.add(egui::DragValue::new(&mut filament.weight).speed(1.0));
                         });
-            
-                        ui.horizontal(|ui| {
-                            ui.label("Price (€/kg):");
-                            ui.add(egui::DragValue::new(&mut filament.price_per_kg).speed(0.1));
-                        });
-            
-                        // "-" button to remove the filament (only for multi-color mode)
-                        if self.is_multi_color && i > 0 {
-                            if ui.button("-").clicked() {
-                                remove_index = Some(i); // Mark the index for removal
-                            }
+
+                        if (i + 1) % 2 == 0 {
+                            ui.end_row(); // Move to the next row after two columns
                         }
-                    });
-                }
-            
-                // Remove the marked filament after the loop
-                if let Some(index) = remove_index {
-                    self.logic.remove_filament(index);
-                }
-            
-                // "+" button to add more filaments (only for multi-color mode)
-                if self.is_multi_color && self.logic.filaments.len() < 16 {
+                    }
+
+                    // Remove the marked filament after the loop
+                    if let Some(index) = remove_index {
+                        self.logic.remove_filament(index);
+                    }
+                });
+
+            // Add button for adding filaments
+            if self.is_multi_color && self.logic.filaments.len() < 16 {
+                ui.horizontal(|ui| {
                     if ui.button("+ Add Filament").clicked() {
                         self.logic.add_filament();
                     }
-                }
-            });            
+                });
+            }
 
             ui.separator();
 
