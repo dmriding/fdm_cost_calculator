@@ -6,6 +6,7 @@ pub struct CalculatorUI {
     pub logic: CalculatorLogic,
     pub logo: Option<TextureHandle>, // Texture handle for the logo
     pub show_help: bool,             // Whether to show the help dialog
+    pub is_multi_color: bool, // Track toggle state
 }
 
 impl Default for CalculatorUI {
@@ -14,6 +15,7 @@ impl Default for CalculatorUI {
             logic: CalculatorLogic::default(),
             logo: None,
             show_help: false,
+            is_multi_color: false, // Default to single-color mode
         }
     }
 }
@@ -21,6 +23,7 @@ impl Default for CalculatorUI {
 impl eframe::App for CalculatorUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            // App heading and currency switcher
             ui.horizontal(|ui| {
                 ui.heading("FDM Cost Calculator");
 
@@ -39,17 +42,12 @@ impl eframe::App for CalculatorUI {
                     self.logic.switch_currency();
                 }
 
-                // Place the help button and logo together
+                // Help button and logo
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    // Logo
                     if let Some(logo) = &self.logo {
                         ui.image((logo.id(), egui::vec2(64.0, 64.0)));
                     }
-
-                    // Larger help button with styled text
-                    let help_button = egui::Button::new(egui::RichText::new("?").size(18.0))
-                        .min_size(egui::vec2(32.0, 32.0));
-                    if ui.add(help_button).clicked() {
+                    if ui.add(egui::Button::new("?")).clicked() {
                         self.show_help = true;
                     }
                 });
@@ -57,20 +55,26 @@ impl eframe::App for CalculatorUI {
 
             ui.separator();
 
-            // Filament count selector
+            // Print Type Toggle
             ui.horizontal(|ui| {
-                ui.label("Number of Filaments:");
-                let mut filament_count = self.logic.filaments.len();
-                if ui
-                .add(egui::DragValue::new(&mut filament_count).range(1..=16))
-                .changed()
-                {
-                    self.logic.update_filament_count(filament_count);
+                ui.label("Print Type:");
+                if ui.selectable_label(!self.is_multi_color, "Single Color").clicked() {
+                    self.is_multi_color = false;
+                    self.logic.update_filament_count(1); // Reset to one filament
+                }
+                if ui.selectable_label(self.is_multi_color, "Multi-Color/Material").clicked() {
+                    self.is_multi_color = true;
+                    if self.logic.filaments.len() < 2 {
+                        self.logic.update_filament_count(2); // Start with two filaments
+                    }
                 }
             });
-            
-            // Multi-material section
+
+            ui.separator();
+
+            // Filament Details Section
             ui.collapsing("Filament Details", |ui| {
+                let mut remove_index = None; // Track the index of the filament to remove
                 for (i, filament) in self.logic.filaments.iter_mut().enumerate() {
                     ui.group(|ui| {
                         ui.label(format!("Filament #{}", i + 1));
@@ -81,16 +85,12 @@ impl eframe::App for CalculatorUI {
                             .selected_text(filament.brand.clone())
                             .show_ui(ui, |ui| {
                                 for brand in &brands {
-                                    if ui
-                                        .selectable_label(&filament.brand == brand, *brand)
-                                        .clicked()
-                                    {
+                                    if ui.selectable_label(&filament.brand == brand, *brand).clicked() {
                                         filament.brand = brand.to_string();
                                     }
                                 }
                             });
             
-                        // Material selection
                         if let Some(materials) = self.logic.filament_prices.get(filament.brand.as_str()) {
                             let material_keys: Vec<_> = materials.keys().cloned().collect();
                             egui::ComboBox::new(format!("material_selector_{}", i), "Select Material")
@@ -110,33 +110,48 @@ impl eframe::App for CalculatorUI {
                                 });
                         }
             
-                        // Carbon-based checkbox
                         ui.checkbox(&mut filament.is_carbon_based, "Carbon-Based");
             
-                        // Filament weight input
                         ui.horizontal(|ui| {
                             ui.label("Weight (grams):");
                             ui.add(egui::DragValue::new(&mut filament.weight).speed(1.0));
                         });
             
-                        // Custom price input
                         ui.horizontal(|ui| {
                             ui.label("Price (€/kg):");
                             ui.add(egui::DragValue::new(&mut filament.price_per_kg).speed(0.1));
                         });
+            
+                        // "-" button to remove the filament (only for multi-color mode)
+                        if self.is_multi_color && i > 0 {
+                            if ui.button("-").clicked() {
+                                remove_index = Some(i); // Mark the index for removal
+                            }
+                        }
                     });
                 }
-            });
+            
+                // Remove the marked filament after the loop
+                if let Some(index) = remove_index {
+                    self.logic.remove_filament(index);
+                }
+            
+                // "+" button to add more filaments (only for multi-color mode)
+                if self.is_multi_color && self.logic.filaments.len() < 16 {
+                    if ui.button("+ Add Filament").clicked() {
+                        self.logic.add_filament();
+                    }
+                }
+            });            
 
             ui.separator();
 
-            // Input for purge/waste material weight
+            // Other inputs
             ui.horizontal(|ui| {
                 ui.label("Purge/Waste Filament (grams):");
                 ui.add(egui::DragValue::new(&mut self.logic.purge_waste_weight).speed(1.0));
             });
 
-            // Other inputs
             ui.horizontal(|ui| {
                 ui.label("Electricity rate (EUR/kWh):");
                 ui.add(egui::DragValue::new(&mut self.logic.electricity_rate).speed(0.01));

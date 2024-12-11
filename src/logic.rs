@@ -75,6 +75,26 @@ impl CalculatorLogic {
         }
     }
 
+    /// Adds a new filament to the list (for multi-color/material mode).
+    pub fn add_filament(&mut self) {
+        if self.filaments.len() < 16 {
+            self.filaments.push(FilamentUsage {
+                brand: "Custom".to_string(),
+                material: "Custom".to_string(),
+                weight: 0.0,
+                price_per_kg: 0.0,
+                is_carbon_based: false,
+            });
+        }
+    }
+
+    /// Removes a filament from the list by index.
+    pub fn remove_filament(&mut self, index: usize) {
+        if index < self.filaments.len() {
+            self.filaments.remove(index);
+        }
+    }
+
     /// Calculates the costs of the print job.
     pub fn calculate_costs(&mut self) {
         let mut total_filament_cost = 0.0;
@@ -122,3 +142,4 @@ impl CalculatorLogic {
         }
     }
 }
+
