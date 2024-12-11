@@ -19,6 +19,10 @@ fn main() -> Result<(), eframe::Error> {
         Box::new(|cc| {
             let mut app = CalculatorUI::default();
 
+            // Set the window size manually
+            cc.egui_ctx.set_pixels_per_point(1.0); // Ensure scaling consistency
+            cc.egui_ctx.request_repaint(); // Apply size change
+
             // Load the logo and assign it to the CalculatorUI instance
             app.logo = load_logo(cc);
 
