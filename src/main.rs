@@ -18,6 +18,7 @@ struct CostCalculator {
     total_cost: f32,             // Total cost (calculated)
     suggested_price: f32,        // Suggested price (calculated)
     profit_estimates: Vec<f32>,  // Estimated prices for different profit margins
+    wear_and_tear_cost: f32,     // Separate wear and tear cost (calculated)
     logo: Option<TextureHandle>, // Texture handle for the logo
     currency: Currency,          // Selected currency
 }
@@ -35,6 +36,7 @@ impl Default for CostCalculator {
             total_cost: 0.0,
             suggested_price: 0.0,
             profit_estimates: vec![0.0; 5],
+            wear_and_tear_cost: 0.0,
             logo: None,
             currency: Currency::EUR, // Default to Euro
         }
@@ -46,9 +48,18 @@ impl CostCalculator {
         let filament_cost_per_gram = self.filament_cost_per_kilo / 1000.0; // Convert kilo cost to per gram
         let filament_cost = filament_cost_per_gram * self.filament_weight; // Cost of the filament used
         let electricity_cost = (self.printer_wattage / 1000.0) * self.print_time * self.electricity_rate; // Electricity cost
-        let wear_and_tear = self.print_time * 0.05; // Simplified wear and tear cost (EUR/hour)
 
-        self.total_cost = filament_cost + electricity_cost + wear_and_tear + self.shipping_cost;
+        // Wear and tear calculation based on print time and average part costs
+        let nozzle_cost_per_hour = 0.01; // Example: EUR 10 per nozzle, lasting ~1000 hours
+        let belt_cost_per_hour = 0.005;  // Example: EUR 20 for a set of belts, lasting ~4000 hours
+        let motor_cost_per_hour = 0.003; // Example: EUR 30 per motor, lasting ~10,000 hours
+        let other_cost_per_hour = 0.002; // Miscellaneous parts wear
+
+        self.wear_and_tear_cost = self.print_time
+            * (nozzle_cost_per_hour + belt_cost_per_hour + motor_cost_per_hour + other_cost_per_hour);
+
+        // Total cost excludes wear and tear for the main calculation
+        self.total_cost = filament_cost + electricity_cost + self.shipping_cost;
         self.suggested_price = self.total_cost * (1.0 + self.markup_percentage / 100.0);
 
         // Calculate profit estimates
@@ -88,40 +99,10 @@ fn main() -> Result<(), eframe::Error> {
             let mut app = CostCalculator::default();
             app.logo = load_logo(cc);
 
-            // Commented out icon loading for now
-            // if cfg!(target_os = "windows") {
-            //     set_app_icon("assets/icon.ico");
-            // }
-
             Ok(Box::new(app))
         }),
     )
 }
-
-// Function to set the app icon using the Windows API
-// #[cfg(target_os = "windows")]
-// fn set_app_icon(icon_path: &str) {
-//     unsafe {
-//         let hwnd = HWND(0); // Placeholder for HWND
-//         let icon = LoadImageW(
-//             None,
-//             wide_string(icon_path).as_ptr(),
-//             IMAGE_ICON,
-//             0,
-//             0,
-//             LR_LOADFROMFILE,
-//         );
-//         if !icon.is_null() {
-//             SendMessageW(hwnd, WM_SETICON, 0, icon.0 as _);
-//         }
-//     }
-// }
-
-// Convert a Rust string to a Windows-compatible wide string
-// #[cfg(target_os = "windows")]
-// fn wide_string(s: &str) -> Vec<u16> {
-//     OsStr::new(s).encode_wide().chain(Some(0)).collect()
-// }
 
 impl eframe::App for CostCalculator {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -216,6 +197,15 @@ impl eframe::App for CostCalculator {
                     self.currency_symbol()
                 ));
             }
+
+            ui.separator();
+
+            // Display wear and tear as a separate line
+            ui.label(format!(
+                "Wear and tear cost: {:.2} {}",
+                self.wear_and_tear_cost,
+                self.currency_symbol()
+            ));
         });
     }
 }
