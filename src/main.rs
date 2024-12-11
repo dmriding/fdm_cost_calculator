@@ -15,9 +15,10 @@ struct CostCalculator {
     print_time: f32,             // Print time in hours
     markup_percentage: f32,      // Markup percentage for profit
     shipping_cost: f32,          // Additional shipping cost
+    hourly_rate: f32,            // Hourly printer usage rate
     total_cost: f32,             // Total cost (calculated)
     suggested_price: f32,        // Suggested price (calculated)
-    profit_estimates: Vec<f32>,  // Estimated prices for different profit margins
+    suggested_price_with_hourly: f32, // Suggested price including hourly fee
     wear_and_tear_cost: f32,     // Separate wear and tear cost (calculated)
     logo: Option<TextureHandle>, // Texture handle for the logo
     currency: Currency,          // Selected currency
@@ -33,9 +34,10 @@ impl Default for CostCalculator {
             print_time: 0.0,
             markup_percentage: 20.0,
             shipping_cost: 0.0,
+            hourly_rate: 5.0, // Default EUR 5/hour for printer usage
             total_cost: 0.0,
             suggested_price: 0.0,
-            profit_estimates: vec![0.0; 5],
+            suggested_price_with_hourly: 0.0,
             wear_and_tear_cost: 0.0,
             logo: None,
             currency: Currency::EUR, // Default to Euro
@@ -49,10 +51,10 @@ impl CostCalculator {
         let filament_cost = filament_cost_per_gram * self.filament_weight; // Cost of the filament used
         let electricity_cost = (self.printer_wattage / 1000.0) * self.print_time * self.electricity_rate; // Electricity cost
 
-        // Wear and tear calculation based on print time and average part costs
-        let nozzle_cost_per_hour = 0.01; // Example: EUR 10 per nozzle, lasting ~1000 hours
-        let belt_cost_per_hour = 0.005;  // Example: EUR 20 for a set of belts, lasting ~4000 hours
-        let motor_cost_per_hour = 0.003; // Example: EUR 30 per motor, lasting ~10,000 hours
+        // Wear and tear calculation
+        let nozzle_cost_per_hour = 0.01; // EUR 10 per nozzle, lasting ~1000 hours
+        let belt_cost_per_hour = 0.005;  // EUR 20 for a set of belts, lasting ~4000 hours
+        let motor_cost_per_hour = 0.003; // EUR 30 per motor, lasting ~10,000 hours
         let other_cost_per_hour = 0.002; // Miscellaneous parts wear
 
         self.wear_and_tear_cost = self.print_time
@@ -60,16 +62,13 @@ impl CostCalculator {
 
         // Total cost excludes wear and tear for the main calculation
         self.total_cost = filament_cost + electricity_cost + self.shipping_cost;
+
+        // Suggested price with markup
         self.suggested_price = self.total_cost * (1.0 + self.markup_percentage / 100.0);
 
-        // Calculate profit estimates
-        self.profit_estimates = vec![
-            self.total_cost * 1.10, // 10% profit
-            self.total_cost * 1.20, // 20% profit
-            self.total_cost * 1.30, // 30% profit
-            self.total_cost * 1.50, // 50% profit
-            self.total_cost * 2.00, // 100% profit
-        ];
+        // Suggested price with hourly printer usage fee
+        let hourly_fee = self.print_time * self.hourly_rate;
+        self.suggested_price_with_hourly = self.suggested_price + hourly_fee;
     }
 
     fn switch_currency(&mut self) {
@@ -167,6 +166,11 @@ impl eframe::App for CostCalculator {
                 ui.add(egui::DragValue::new(&mut self.shipping_cost).speed(0.1));
             });
 
+            ui.horizontal(|ui| {
+                ui.label("Hourly printer usage rate:");
+                ui.add(egui::DragValue::new(&mut self.hourly_rate).speed(0.5));
+            });
+
             // Calculate button
             if ui.button("Calculate").clicked() {
                 self.calculate();
@@ -185,22 +189,14 @@ impl eframe::App for CostCalculator {
                 self.suggested_price,
                 self.currency_symbol()
             ));
+            ui.label(format!(
+                "Suggested price with hourly fee: {:.2} {}",
+                self.suggested_price_with_hourly,
+                self.currency_symbol()
+            ));
 
             ui.separator();
 
-            ui.label("Profit Estimates:");
-            for (i, estimate) in self.profit_estimates.iter().enumerate() {
-                ui.label(format!(
-                    "{}% Profit: {:.2} {}",
-                    (i + 1) * 10,
-                    estimate,
-                    self.currency_symbol()
-                ));
-            }
-
-            ui.separator();
-
-            // Display wear and tear as a separate line
             ui.label(format!(
                 "Wear and tear cost: {:.2} {}",
                 self.wear_and_tear_cost,
