@@ -117,6 +117,14 @@ impl eframe::App for CostCalculator {
                 // Main heading
                 ui.heading("FDM Cost Calculator");
 
+                // Help button next to the title
+                if ui.button("?").on_hover_text(
+                    "1. Slice your model using a slicer software to gather details.
+2. Input the filament cost, electricity cost, and print details here.
+3. Use the buttons to calculate total costs and suggested pricing.").clicked() {
+                    // Placeholder for future functionality
+                }
+
                 // Place the logo in the top-right corner
                 if let Some(logo) = &self.logo {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
