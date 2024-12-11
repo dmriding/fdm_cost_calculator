@@ -57,73 +57,74 @@ impl eframe::App for CalculatorUI {
 
             ui.separator();
 
-            // Brand dropdown
+            // Input for purge/waste material weight
             ui.horizontal(|ui| {
-                ui.label("Brand:");
-                let brands: Vec<_> = self.logic.filament_prices.keys().cloned().collect();
-                egui::ComboBox::new("brand_selector", "Select a Brand")
-                    .selected_text(self.logic.selected_brand.as_deref().unwrap_or("Select Brand").to_string())
-                    .show_ui(ui, |ui| {
-                        for brand in brands {
-                            if ui
-                                .selectable_label(self.logic.selected_brand.as_deref() == Some(brand), brand)
-                                .clicked()
-                            {
-                                self.logic.selected_brand = Some(brand.to_string());
-                                self.logic.update_filament_price();
-                            }
-                        }
-                    });
+                ui.label("Purge/Waste Filament (grams):");
+                ui.add(egui::DragValue::new(&mut self.logic.purge_waste_weight).speed(1.0));
             });
 
-            // Material dropdown
-            ui.horizontal(|ui| {
-                ui.label("Material:");
-                if let Some(brand) = &self.logic.selected_brand {
-                    if let Some(materials) = self.logic.filament_prices.get(brand.as_str()) {
-                        let material_keys: Vec<_> = materials.keys().cloned().collect();
-                        egui::ComboBox::new("material_selector", "Select a Material")
-                            .selected_text(self.logic.selected_material.as_deref().unwrap_or("Select Material").to_string())
+            // Multi-material section
+            ui.collapsing("Filament Details", |ui| {
+                for (i, filament) in self.logic.filaments.iter_mut().enumerate() {
+                    ui.group(|ui| {
+                        ui.label(format!("Filament #{}", i + 1));
+
+                        // Brand selection
+                        let brands: Vec<_> = self.logic.filament_prices.keys().cloned().collect();
+                        egui::ComboBox::new(format!("brand_selector_{}", i), "Select Brand")
+                            .selected_text(filament.brand.clone())
                             .show_ui(ui, |ui| {
-                                for material in material_keys {
+                                for brand in &brands {
                                     if ui
-                                        .selectable_label(self.logic.selected_material.as_deref() == Some(material), material)
+                                        .selectable_label(&filament.brand == brand, *brand)
                                         .clicked()
                                     {
-                                        self.logic.selected_material = Some(material.to_string());
-                                        self.logic.update_filament_price();
+                                        filament.brand = brand.to_string();
                                     }
                                 }
                             });
-                    }
-                }
-            });
 
-            // Carbon-based checkbox
-            ui.horizontal(|ui| {
-                ui.label("Carbon-Based:");
-                if let Some(material) = &self.logic.selected_material {
-                    if ["PLA", "PETG", "ABS", "ASA"].contains(&material.as_str()) {
-                        ui.checkbox(&mut self.logic.is_carbon_based, "Add carbon-based cost");
-                        self.logic.update_filament_price();
-                    }
+                        // Material selection
+                        if let Some(materials) = self.logic.filament_prices.get(&filament.brand.as_str()) {
+                            let material_keys: Vec<_> = materials.keys().cloned().collect();
+                            egui::ComboBox::new(format!("material_selector_{}", i), "Select Material")
+                                .selected_text(filament.material.clone())
+                                .show_ui(ui, |ui| {
+                                    for material in &material_keys {
+                                        if ui
+                                            .selectable_label(&filament.material == material, *material)
+                                            .clicked()
+                                        {
+                                            filament.material = material.to_string();
+                                            if let Some(price) = materials.get(&material) {
+                                                filament.price_per_kg = *price;
+                                            }
+                                        }
+                                    }
+                                });
+                        }                        
+
+                        // Carbon-based checkbox
+                        ui.checkbox(&mut filament.is_carbon_based, "Carbon-Based");
+
+                        // Filament weight input
+                        ui.horizontal(|ui| {
+                            ui.label("Weight (grams):");
+                            ui.add(egui::DragValue::new(&mut filament.weight).speed(1.0));
+                        });
+
+                        // Custom price input
+                        ui.horizontal(|ui| {
+                            ui.label("Price (€/kg):");
+                            ui.add(egui::DragValue::new(&mut filament.price_per_kg).speed(0.1));
+                        });
+                    });
                 }
             });
 
             ui.separator();
 
-            // Manual filament price input
-            ui.horizontal(|ui| {
-                ui.label("Filament price (EUR/kg):");
-                ui.add(egui::DragValue::new(&mut self.logic.filament_price).speed(0.1));
-            });
-
             // Other inputs
-            ui.horizontal(|ui| {
-                ui.label("Filament weight (grams):");
-                ui.add(egui::DragValue::new(&mut self.logic.filament_weight).speed(1.0));
-            });
-
             ui.horizontal(|ui| {
                 ui.label("Electricity rate (EUR/kWh):");
                 ui.add(egui::DragValue::new(&mut self.logic.electricity_rate).speed(0.01));
@@ -142,7 +143,7 @@ impl eframe::App for CalculatorUI {
             ui.horizontal(|ui| {
                 ui.label("Hourly Charge (€/hour):");
                 ui.add(egui::DragValue::new(&mut self.logic.hourly_charge).speed(0.1));
-            });            
+            });
 
             ui.horizontal(|ui| {
                 ui.label("Shipping cost:");
