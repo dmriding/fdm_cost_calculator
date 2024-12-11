@@ -22,6 +22,7 @@ struct CostCalculator {
     wear_and_tear_cost: f32,     // Separate wear and tear cost (calculated)
     logo: Option<TextureHandle>, // Texture handle for the logo
     currency: Currency,          // Selected currency
+    include_wear_and_tear: bool, // Whether to include wear and tear in the suggested price
 }
 
 impl Default for CostCalculator {
@@ -41,6 +42,7 @@ impl Default for CostCalculator {
             wear_and_tear_cost: 0.0,
             logo: None,
             currency: Currency::EUR, // Default to Euro
+            include_wear_and_tear: false, // Default to excluding wear and tear
         }
     }
 }
@@ -69,6 +71,11 @@ impl CostCalculator {
         // Suggested price with hourly printer usage fee
         let hourly_fee = self.print_time * self.hourly_rate;
         self.suggested_price_with_hourly = self.suggested_price + hourly_fee;
+
+        // Optionally include wear and tear in the suggested price
+        if self.include_wear_and_tear {
+            self.suggested_price_with_hourly += self.wear_and_tear_cost;
+        }
     }
 
     fn switch_currency(&mut self) {
@@ -196,6 +203,11 @@ impl eframe::App for CostCalculator {
             ));
 
             ui.separator();
+
+            if ui.button("Add wear and tear costs to suggested pricing").clicked() {
+                self.include_wear_and_tear = true;
+                self.calculate();
+            }
 
             ui.label(format!(
                 "Wear and tear cost: {:.2} {}",
