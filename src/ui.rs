@@ -62,8 +62,8 @@ impl eframe::App for CalculatorUI {
                 ui.label("Number of Filaments:");
                 let mut filament_count = self.logic.filaments.len();
                 if ui
-                    .add(egui::DragValue::new(&mut filament_count).clamp_range(1..=16))
-                    .changed()
+                .add(egui::DragValue::new(&mut filament_count).range(1..=16))
+                .changed()
                 {
                     self.logic.update_filament_count(filament_count);
                 }
