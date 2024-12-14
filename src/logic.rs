@@ -46,7 +46,7 @@ impl Default for CalculatorLogic {
             }],
             purge_waste_weight: 0.0,
 
-            electricity_rate: 0.12,
+            electricity_rate: 0.26, // What electricity cost roughly in my stupid country haha
             printer_wattage: 250.0,
             print_time: 0.0,
             hourly_charge: 2.50, // Default hourly charge
