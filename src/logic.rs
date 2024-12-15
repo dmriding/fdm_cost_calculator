@@ -9,8 +9,9 @@ pub enum Currency {
 pub struct FilamentUsage {
     pub brand: String,
     pub material: String,
-    pub weight: f32,         // Weight of the filament in grams
-    pub price_per_kg: f32,   // Custom price per kilogram for the filament
+    pub weight: f32,         // Weight of the filament used (grams)
+    pub price_per_roll: f32, // Price of the filament roll
+    pub roll_weight: f32,    // Weight of the filament roll (grams)
     pub is_carbon_based: bool, // Whether the filament is carbon-based
 }
 
@@ -30,6 +31,11 @@ pub struct CalculatorLogic {
     pub wear_and_tear_cost: f32, // Wear and tear cost
     pub total_cost: f32, // Total cost (calculated)
     pub suggested_price: f32, // Suggested price (calculated)
+    pub suggested_price_with_post_processing: f32, // Suggested price with post-processing
+
+    // Post-processing fields
+    pub post_processing_hours: f32,
+    pub post_processing_rate: f32,
 }
 
 impl Default for CalculatorLogic {
@@ -41,20 +47,25 @@ impl Default for CalculatorLogic {
                 brand: "Custom".to_string(),
                 material: "Custom".to_string(),
                 weight: 0.0,
-                price_per_kg: 0.0,
+                price_per_roll: 0.0,
+                roll_weight: 1000.0, // Default to 1kg
                 is_carbon_based: false,
             }],
             purge_waste_weight: 0.0,
 
-            electricity_rate: 0.26, // What electricity cost roughly in my stupid country haha
+            electricity_rate: 0.26,
             printer_wattage: 250.0,
             print_time: 0.0,
-            hourly_charge: 2.50, // Default hourly charge
+            hourly_charge: 2.50,
             shipping_cost: 0.0,
             markup_percentage: 20.0,
             wear_and_tear_cost: 0.0,
             total_cost: 0.0,
             suggested_price: 0.0,
+            suggested_price_with_post_processing: 0.0,
+
+            post_processing_hours: 0.0,
+            post_processing_rate: 15.0, // Default post-processing hourly rate
         }
     }
 }
@@ -67,7 +78,8 @@ impl CalculatorLogic {
                 brand: "Custom".to_string(),
                 material: "Custom".to_string(),
                 weight: 0.0,
-                price_per_kg: 0.0,
+                price_per_roll: 0.0,
+                roll_weight: 1000.0,
                 is_carbon_based: false,
             }));
         } else {
@@ -82,7 +94,8 @@ impl CalculatorLogic {
                 brand: "Custom".to_string(),
                 material: "Custom".to_string(),
                 weight: 0.0,
-                price_per_kg: 0.0,
+                price_per_roll: 0.0,
+                roll_weight: 1000.0,
                 is_carbon_based: false,
             });
         }
@@ -101,7 +114,9 @@ impl CalculatorLogic {
 
         // Calculate costs for each filament
         for filament in &self.filaments {
-            total_filament_cost += (filament.price_per_kg / 1000.0) * filament.weight;
+            let cost_per_gram = filament.price_per_roll / filament.roll_weight;
+            total_filament_cost += cost_per_gram * filament.weight;
+
             if filament.is_carbon_based {
                 total_filament_cost += 10.0 * (filament.weight / 1000.0); // Extra cost for CF/GF
             }
@@ -118,10 +133,16 @@ impl CalculatorLogic {
         self.wear_and_tear_cost = self.print_time * 0.05; // Simplified wear and tear (EUR/hour)
         self.wear_and_tear_cost += self.purge_waste_weight * 0.01; // Extra wear for purge waste
 
+        // Calculate post-processing costs
+        let post_processing_cost = self.post_processing_hours * self.post_processing_rate;
+
         // Calculate total costs
         self.total_cost = total_filament_cost + electricity_cost + self.wear_and_tear_cost
-            + self.hourly_charge * self.print_time + self.shipping_cost;
+            + self.hourly_charge * self.print_time + self.shipping_cost + post_processing_cost;
+
+        // Calculate suggested prices
         self.suggested_price = self.total_cost * (1.0 + self.markup_percentage / 100.0);
+        self.suggested_price_with_post_processing = self.suggested_price + post_processing_cost;
     }
 
     /// Switches the currency symbol.
@@ -142,4 +163,3 @@ impl CalculatorLogic {
         }
     }
 }
-
