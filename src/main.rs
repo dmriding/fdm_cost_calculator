@@ -1,3 +1,6 @@
+// Suppress the terminal window on Windows release builds
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 mod filament_prices;
 mod logic;
 mod ui;
@@ -5,27 +8,27 @@ mod ui;
 use crate::ui::{CalculatorUI, load_logo};
 
 fn main() -> Result<(), eframe::Error> {
+    // Configure native options for the application window
     let options = eframe::NativeOptions {
-        vsync: true,               // Enable vertical sync
-        multisampling: 1,          // Use default multisampling (anti-aliasing)
-        depth_buffer: 0,           // Disable depth buffer (2D app)
-        stencil_buffer: 0,         // Disable stencil buffer (2D app)
+        vsync: true,               // Enable vertical sync for smoother rendering
+        multisampling: 1,          // Default multisampling (anti-aliasing)
+        depth_buffer: 0,           // Disable depth buffer (not needed for 2D applications)
+        stencil_buffer: 0,         // Disable stencil buffer (not needed for 2D applications)
         ..Default::default()       // Use other default options
     };
 
+    // Run the FDM Cost Calculator application
     eframe::run_native(
-        "FDM Cost Calculator",
-        options,
+        "FDM Cost Calculator",     // Window title
+        options,                   // Window and rendering options
         Box::new(|cc| {
+            // Initialize the main application structure
             let mut app = CalculatorUI::default();
 
-            // Set the window size manually
-            cc.egui_ctx.set_pixels_per_point(1.0); // Ensure scaling consistency
-            cc.egui_ctx.request_repaint(); // Apply size change
-
-            // Load the logo and assign it to the CalculatorUI instance
+            // Load and assign the application logo
             app.logo = load_logo(cc);
 
+            // Return the initialized application instance
             Ok(Box::new(app))
         }),
     )

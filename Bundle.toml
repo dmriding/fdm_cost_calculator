@@ -1,0 +1,8 @@
+name = "FDM Cost Calculator"
+identifier = "gr.netviper.fdmcostcalculator"
+version = "0.1.0"
+icon = ["assets/logo.icns"]
+short_description = "A tool to calculate costs for 3D printing."
+long_description = "FDM Cost Calculator helps users calculate filament costs, electricity usage, post-processing, and total print costs for FDM 3D printers."
+category = "public.app-category.utilities"
+copyright = "Copyright © 2024 NetViper"
