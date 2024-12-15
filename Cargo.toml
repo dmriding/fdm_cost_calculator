@@ -11,12 +11,17 @@ egui_extras = "0.29.1"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58.0", features = ["Win32_UI_WindowsAndMessaging"] }
 
+# Binary configuration
 [[bin]]
 name = "fdm_cost_calculator"
 path = "src/main.rs"
 
-# Use the windows subsystem to suppress the terminal on Windows
+# macOS-specific configuration
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "link-args=-Wl,-rpath,@executable_path/../Frameworks"]
+
+# Release profile optimizations
 [profile.release]
-lto = true      # Optimize for release builds
-panic = "abort" # Reduce binary size
-strip = true    # Remove debug symbols
+lto = true      # Link-time optimization for smaller binaries
+panic = "abort" # Reduce binary size by disabling unwind information
+strip = true    # Strip debug symbols to minimize binary size
